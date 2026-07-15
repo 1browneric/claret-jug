@@ -117,8 +117,9 @@
   .toggle{font-family:inherit;font-size:12px;letter-spacing:.1em;text-transform:uppercase;background:var(--card);
           border:1px solid var(--rule);padding:9px 16px;cursor:pointer;color:var(--navy);margin-bottom:16px}
   .toggle:hover{border-color:var(--navy)}
-  .cmp-scroll{overflow-x:auto}
+  .cmp-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
   .cmp{min-width:900px}
+  .board-tbl{min-width:560px}
   .own{font-size:11px;color:var(--muted);letter-spacing:.05em}
 
   .tee{line-height:1.25}
@@ -141,6 +142,7 @@
     .meta{text-align:left;gap:22px}
     .g-row,.hd-lbl{grid-template-columns:30px 1fr 50px 46px 44px 54px;gap:8px;padding-left:14px}
     .g-row .gt,.hd-lbl span:nth-child(4){display:none}
+    .board-tbl{min-width:0} .rd-col{display:none}
     .tabbar button{padding:13px 15px;letter-spacing:.08em}
   }
   @media (prefers-reduced-motion:no-preference){
@@ -189,16 +191,18 @@
 
   <section id="board" class="hide">
     <button class="toggle" id="ownedBtn" onclick="toggleOwned()">Owned golfers only</button>
-    <table>
+    <div class="cmp-scroll">
+    <table class="board-tbl">
       <thead><tr>
         <th style="width:56px">Pos</th><th>Golfer</th>
         <th class="num" style="width:60px">Score</th>
         <th class="num" style="width:132px">Thru / Tee</th>
-        <th class="num" style="width:44px">Rd</th>
+        <th class="num rd-col" style="width:44px">Rd</th>
         <th style="width:210px">Owner</th>
       </tr></thead>
       <tbody id="boardBody"></tbody>
     </table>
+    </div>
   </section>
 
   <section id="cmp" class="hide">
@@ -549,7 +553,7 @@ function render(){
         <td><span class="pcell">${img(g)}${flag(g)}${g.name}</span></td>
         <td class="num ${parCls((g.toPar&&g.toPar.value)||0)}">${toPar(g)}</td>
         <td class="num">${boardThru(g)}</td>
-        <td class="num">${g.round||'-'}</td>
+        <td class="num rd-col">${g.round||'-'}</td>
         <td>${chips}</td>
       </tr>`;
     }).join('');
