@@ -36,11 +36,17 @@
   .meta .k{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold)}
   .meta .v{font-size:20px;font-variant-numeric:tabular-nums;color:#fff;margin-top:3px}
 
+  .wx{text-align:center;min-width:148px}
+  .wx .k{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold)}
+  .wx .wv{font-size:20px;color:#fff;margin-top:3px;font-variant-numeric:tabular-nums}
+  .wx .ws{font-size:12px;color:#9FB2C7;margin-top:2px;letter-spacing:.03em}
+
   .tabbar{background:var(--navy-2)}
-  .tabbar .wrap{display:flex}
+  .tabbar .wrap{display:flex;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .tabbar .wrap::-webkit-scrollbar{display:none}
   .tabbar button{
     font-family:inherit;font-size:12px;letter-spacing:.16em;text-transform:uppercase;
-    background:none;border:none;border-bottom:3px solid transparent;
+    background:none;border:none;border-bottom:3px solid transparent;flex:none;white-space:nowrap;
     padding:15px 26px 12px;cursor:pointer;color:#9FB2C7;
   }
   .tabbar button:hover{color:#fff}
@@ -115,12 +121,23 @@
   .cmp{min-width:900px}
   .own{font-size:11px;color:var(--muted);letter-spacing:.05em}
 
+  .tee{line-height:1.25}
+  .tee b{font-weight:normal;display:block;font-size:14px}
+  .tee span{display:block;font-size:11px;color:var(--muted)}
+
+  .pins-hd{margin-bottom:16px}
+  .pins-t{font-size:20px}
+  .pins-s{font-size:12px;color:var(--muted);margin-top:3px;letter-spacing:.05em;text-transform:uppercase}
+  .pinsheet{width:100%;height:auto;display:block;border:1px solid var(--rule);background:#fff;box-shadow:0 1px 3px rgba(10,34,64,.08)}
+  .pins-miss{padding:44px 18px;text-align:center;color:var(--muted);font-size:15px;background:var(--card);border:1px solid var(--rule)}
+
   .banner{border-left:4px solid var(--amber);background:#FFF9EF;padding:12px 16px;font-size:14px;margin-bottom:22px;line-height:1.55}
   .banner.err{border-left-color:var(--red);background:#FDF3F3}
   .hide{display:none}
 
   @media (max-width:680px){
     h1{font-size:26px} .jug{height:56px}
+    .wx{text-align:left;min-width:0;flex-basis:100%;order:3;margin-top:4px}
     .meta{text-align:left;gap:22px}
     .g-row,.hd-lbl{grid-template-columns:30px 1fr 50px 46px 44px 54px;gap:8px;padding-left:14px}
     .g-row .gt,.hd-lbl span:nth-child(4){display:none}
@@ -144,6 +161,11 @@
         <div class="venue">Royal Birkdale &middot; Southport, England</div>
       </div>
     </div>
+    <div class="wx" id="wx" aria-live="polite">
+      <div class="k">Royal Birkdale</div>
+      <div class="wv" id="wxv">&mdash;</div>
+      <div class="ws" id="wxs">Loading weather&hellip;</div>
+    </div>
     <div class="meta">
       <div><div class="k">Round</div><div class="v" id="rnd">&mdash;</div></div>
       <div><div class="k">Purse</div><div class="v" id="pot">$36</div></div>
@@ -157,6 +179,7 @@
     <button role="tab" id="t-pool"  aria-selected="true"  onclick="showTab('pool')">Pool</button>
     <button role="tab" id="t-board" aria-selected="false" onclick="showTab('board')">Leaderboard</button>
     <button role="tab" id="t-cmp"   aria-selected="false" onclick="showTab('cmp')">Compare</button>
+    <button role="tab" id="t-pins"  aria-selected="false" onclick="showTab('pins')">Day 1 Pins</button>
   </div>
 </div>
 
@@ -170,9 +193,9 @@
       <thead><tr>
         <th style="width:56px">Pos</th><th>Golfer</th>
         <th class="num" style="width:60px">Score</th>
-        <th class="num" style="width:56px">Thru</th>
+        <th class="num" style="width:132px">Thru / Tee</th>
         <th class="num" style="width:44px">Rd</th>
-        <th style="width:250px">Owner</th>
+        <th style="width:210px">Owner</th>
       </tr></thead>
       <tbody id="boardBody"></tbody>
     </table>
@@ -197,6 +220,16 @@
       </table>
     </div>
   </section>
+
+  <section id="pins" class="hide">
+    <div class="pins-hd">
+      <div class="pins-t">Round One &middot; Approved Hole Locations</div>
+      <div class="pins-s">Thursday, July 16, 2026 &middot; Royal Birkdale</div>
+    </div>
+    <img class="pinsheet" src="pins-day1.png" alt="Round 1 approved hole location sheet"
+         onerror="this.style.display='none';document.getElementById('pinsMissing').classList.remove('hide')">
+    <div id="pinsMissing" class="pins-miss hide">Day&nbsp;1 pin sheet is being posted &mdash; check back shortly.</div>
+  </section>
 </main>
 
 <script>
@@ -208,7 +241,7 @@ const REFRESH_MS= 60000;
 const PALETTE   = ['#0A2240', '#C9A227', '#157A7A', '#B5651D'];
 
 const ENTRANTS = [
-  { name:'Eric',        me:true, golfers:[] },
+  { name:'Eric', me:true, golfers:['Ludvig Aberg','Matt Fitzpatrick','Tyrrell Hatton','Russell Henley','Tom Kim','Aaron Rai'] },
   { name:'Jimmy',                golfers:[] },
   { name:'Garrett',              golfers:[] },
   { name:'Dr. Swanson',          golfers:[] }
@@ -289,12 +322,10 @@ async function load(){
     }
     Object.keys(ROSTER).forEach(id=>score(FIELD[id]));
 
-    const noRoster = ENTRANTS.every(e=>!e.golfers.length);
     banner(
       MOCK ? {m:'Demo mode. Simulated Saturday, Round 3 in progress.'}
       : miss.length ? {m:'Unmatched names, scoring zero: '+miss.join(', '),err:true}
-      : noRoster ? {m:'Rosters lock Thursday. The leaderboard below is live and shows Thursday tee times.'}
-      : (EVENT.status.type.state==='pre' ? {m:'Tee times shown. Scoring begins Thursday.'} : null));
+      : null);
     render();
   }catch(e){
     banner({m:'Scores unavailable: '+e.message+'. Retrying in 60 seconds.',err:true});
@@ -424,6 +455,25 @@ function thru(g){
 const img=g=>g.shot?`<img class="shot" src="${g.shot}" alt="" loading="lazy">`:`<span class="shot"></span>`;
 const flag=g=>g.flag?`<img class="flag" src="${g.flag}" alt="${g.country}" loading="lazy">`:'';
 
+/* tee-time helpers: sort by tee time until teed off, then by score; show UK + CT + ET */
+const teeMs=g=>(g&&g.teeTime)?new Date(g.teeTime).getTime():Infinity;
+const started=g=>g.state!=='STATUS_SCHEDULED';
+function boardCmp(a,b){
+  const aS=started(a), bS=started(b);
+  if(aS!==bS) return aS?-1:1;                                   // teed-off above not-yet-started
+  if(aS) return ((a.posNum||999)-(b.posNum||999))||(teeMs(a)-teeMs(b))||a.name.localeCompare(b.name);
+  return (teeMs(a)-teeMs(b))||a.name.localeCompare(b.name);     // both waiting -> earliest tee first
+}
+const tzTime=(ms,tz)=>new Date(ms).toLocaleTimeString('en-US',{timeZone:tz,hour:'numeric',minute:'2-digit'});
+function boardThru(g){
+  if(g.state==='STATUS_SCHEDULED' && g.teeTime){
+    const ms=new Date(g.teeTime).getTime();
+    return `<div class="tee"><b>${tzTime(ms,'Europe/London')} UK</b>`+
+           `<span>${tzTime(ms,'America/Chicago')} CT &middot; ${tzTime(ms,'America/New_York')} ET</span></div>`;
+  }
+  return thru(g);
+}
+
 function render(){
   const st=EVENT.status.type;
   document.getElementById('rnd').textContent=st.state==='pre'?'Thu':(st.completed?'Final':(EVENT.status.period||1));
@@ -486,7 +536,7 @@ function render(){
     </div>`;
   }).join('');
 
-  const all=Object.values(FIELD).sort((a,b)=>((a.posNum||999)-(b.posNum||999))||a.name.localeCompare(b.name));
+  const all=Object.values(FIELD).sort(boardCmp);
   document.getElementById('boardBody').innerHTML=all
     .filter(g=>!ownedOnly||ROSTER[g.id])
     .map(g=>{
@@ -498,7 +548,7 @@ function render(){
         <td>${g.state==='STATUS_CUT'?'<span style="color:var(--red)">CUT</span>':g.pos}</td>
         <td><span class="pcell">${img(g)}${flag(g)}${g.name}</span></td>
         <td class="num ${parCls((g.toPar&&g.toPar.value)||0)}">${toPar(g)}</td>
-        <td class="num">${thru(g)}</td>
+        <td class="num">${boardThru(g)}</td>
         <td class="num">${g.round||'-'}</td>
         <td>${chips}</td>
       </tr>`;
@@ -538,7 +588,7 @@ function banner(b){
   el.textContent=b.m;
 }
 function showTab(id){
-  ['pool','board','cmp'].forEach(t=>{
+  ['pool','board','cmp','pins'].forEach(t=>{
     document.getElementById(t).classList.toggle('hide',t!==id);
     document.getElementById('t-'+t).setAttribute('aria-selected',String(t===id));
   });
@@ -549,8 +599,33 @@ function toggleOwned(){
   render();
 }
 
+/* ================= weather (Royal Birkdale) ================= */
+const WMO={0:'Clear',1:'Mainly clear',2:'Partly cloudy',3:'Overcast',45:'Fog',48:'Rime fog',
+  51:'Light drizzle',53:'Drizzle',55:'Heavy drizzle',56:'Freezing drizzle',57:'Freezing drizzle',
+  61:'Light rain',63:'Rain',65:'Heavy rain',66:'Freezing rain',67:'Freezing rain',
+  71:'Light snow',73:'Snow',75:'Heavy snow',77:'Snow grains',
+  80:'Rain showers',81:'Rain showers',82:'Heavy showers',85:'Snow showers',86:'Snow showers',
+  95:'Thunderstorm',96:'Thunderstorm',99:'Thunderstorm'};
+const compass=d=>['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'][Math.round(((d||0)%360)/22.5)%16];
+async function loadWx(){
+  try{
+    const u='https://api.open-meteo.com/v1/forecast?latitude=53.6236&longitude=-3.0327'+
+            '&current=temperature_2m,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m'+
+            '&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=Europe%2FLondon';
+    const r=await fetch(u,{cache:'no-store'}); if(!r.ok) throw new Error();
+    const c=(await r.json()).current;
+    document.getElementById('wxv').textContent=Math.round(c.temperature_2m)+'°F';
+    const cond=WMO[c.weather_code]||'';
+    document.getElementById('wxs').textContent=
+      (cond?cond+' · ':'')+'Wind '+Math.round(c.wind_speed_10m)+' '+compass(c.wind_direction_10m)+
+      (c.wind_gusts_10m?(' · G '+Math.round(c.wind_gusts_10m)):'');
+  }catch(e){ document.getElementById('wxs').textContent='Weather unavailable'; }
+}
+
 load();
 setInterval(load,REFRESH_MS);
+loadWx();
+setInterval(loadWx,600000);
 </script>
 </body>
 </html>
