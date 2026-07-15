@@ -119,7 +119,9 @@
   .toggle:hover{border-color:var(--navy)}
   .cmp-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
   .cmp{min-width:900px}
-  .board-tbl{min-width:560px}
+  .board-tbl{min-width:552px;table-layout:fixed}
+  .board-tbl .pcell{min-width:0}
+  .bn{min-width:0;overflow-wrap:anywhere;line-height:1.2}
   .own{font-size:11px;color:var(--muted);letter-spacing:.05em}
 
   .tee{line-height:1.25}
@@ -226,10 +228,10 @@
     <div class="cmp-scroll">
     <table class="board-tbl">
       <thead><tr>
-        <th style="width:50px">Pos</th><th style="min-width:132px">Golfer</th>
-        <th class="num" style="width:56px">Score</th>
-        <th class="num" style="width:116px">Thru / Tee</th>
-        <th class="num rd-col" style="width:38px">Rd</th>
+        <th style="width:46px">Pos</th><th style="width:150px">Golfer</th>
+        <th class="num" style="width:52px">Score</th>
+        <th class="num" style="width:118px">Thru / Tee</th>
+        <th class="num rd-col" style="width:36px">Rd</th>
         <th style="width:150px">Owner</th>
       </tr></thead>
       <tbody id="boardBody"></tbody>
@@ -582,7 +584,7 @@ function render(){
         return `<span class="chip ${e.me?'me':''}" style="--c:${e.color}">${e.name}</span>`;}).join('');
       return `<tr class="click ${mine?'mine':(own.length?'owned':'')}" onclick="openPlayer('${g.id}')">
         <td>${g.state==='STATUS_CUT'?'<span style="color:var(--red)">CUT</span>':g.pos}</td>
-        <td><span class="pcell">${img(g)}${flag(g)}${g.name}</span></td>
+        <td><span class="pcell">${img(g)}${flag(g)}<span class="bn">${g.name}</span></span></td>
         <td class="num ${parCls((g.toPar&&g.toPar.value)||0)}">${toPar(g)}</td>
         <td class="num">${boardThru(g)}</td>
         <td class="num rd-col">${g.round||'-'}</td>
