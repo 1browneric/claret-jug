@@ -153,15 +153,21 @@
   .rd-block{margin-bottom:18px}
   .rd-ttl{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
   .sc-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
-  .sc{border-collapse:collapse;font-variant-numeric:tabular-nums;width:100%}
-  .sc td,.sc th{border:1px solid var(--rule);padding:6px 2px;text-align:center;font-size:12px;font-weight:normal;min-width:22px}
+  .sc{border-collapse:collapse;font-variant-numeric:tabular-nums;width:100%;margin-bottom:11px}
+  .sc td,.sc th{border:1px solid var(--rule);padding:4px 2px;text-align:center;font-size:12px;font-weight:normal;min-width:30px;height:32px}
   .sc thead th{background:var(--navy);color:var(--gold);font-size:9px}
-  .sc .lab{background:#F7F3E9;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.06em;text-align:left;padding-left:8px;white-space:nowrap;min-width:42px}
-  .sc .tot{background:#F7F3E9;font-weight:bold}
-  .hc.birdie{color:var(--red);font-weight:bold}
-  .hc.eagle{color:#fff;background:var(--red);font-weight:bold}
-  .hc.bogey{color:var(--navy)}
-  .hc.dbl{background:#E7E0CE;color:var(--navy)}
+  .sc .lab{background:#F7F3E9;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.06em;text-align:left;padding-left:8px;white-space:nowrap;min-width:40px}
+  .sc td.tot,.sc th.tot{background:#F7F3E9;font-weight:bold}
+  .mk{display:inline-flex;align-items:center;justify-content:center;width:21px;height:21px;line-height:1}
+  .mk.birdie{border:1.6px solid var(--red);border-radius:50%;color:var(--red)}
+  .mk.eagle{border:1.6px solid var(--red);border-radius:50%;color:var(--red);box-shadow:0 0 0 2px var(--card),0 0 0 3.4px var(--red)}
+  .mk.bogey{border:1.6px solid var(--navy)}
+  .mk.dbl{border:1.6px solid var(--navy);box-shadow:0 0 0 2px var(--card),0 0 0 3.4px var(--navy)}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;justify-content:center;padding:2px 0 16px;color:var(--muted);font-size:11px}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .lg{width:15px;height:15px;flex:none}
+  .lg.cir{border:1.6px solid var(--red);border-radius:50%}
+  .lg.sq{border:1.6px solid var(--navy)}
   .sheet-tee{padding:14px 0 6px;text-align:center}
   .sheet-tee .big{font-size:24px}
   .sheet-tee .sm{font-size:13px;color:var(--muted);margin-top:5px}
@@ -642,24 +648,24 @@ function toggleOwned(){
 function statBox(k,v){return `<div><div class="k">${k}</div><div class="v">${v}</div></div>`;}
 function scoreCard(rd,label){
   if(!rd||!rd.holes||!rd.holes.length) return '';
-  const cls=h=>{const d=h.value-h.par;return d<=-2?'eagle':d===-1?'birdie':d===1?'bogey':d>=2?'dbl':'';};
-  const seg=(hs,from)=>{let hdr='',par='',sc='';
-    hs.forEach((h,i)=>{hdr+=`<th>${from+i}</th>`;par+=`<td>${h.par}</td>`;sc+=`<td class="hc ${cls(h)}">${h.value}</td>`;});
-    return {hdr,par,sc,ps:hs.reduce((s,h)=>s+h.par,0),ss:hs.reduce((s,h)=>s+h.value,0)};};
-  const out=seg(rd.holes.slice(0,9),1);
-  const inn=rd.holes.length>9?seg(rd.holes.slice(9,18),10):null;
-  let h=`<div class="rd-block"><div class="rd-ttl">${label}</div><div class="sc-wrap"><table class="sc"><thead><tr><th class="lab"></th>${out.hdr}<th>Out</th>`;
-  if(inn) h+=`${inn.hdr}<th>In</th><th>Tot</th>`;
-  h+=`</tr></thead><tbody><tr><td class="lab">Par</td>${out.par}<td class="tot">${out.ps}</td>`;
-  if(inn) h+=`${inn.par}<td class="tot">${inn.ps}</td><td class="tot">${out.ps+inn.ps}</td>`;
-  h+=`</tr><tr><td class="lab">Score</td>${out.sc}<td class="tot">${out.ss}</td>`;
-  if(inn) h+=`${inn.sc}<td class="tot">${inn.ss}</td><td class="tot">${out.ss+inn.ss}</td>`;
-  return h+`</tr></tbody></table></div></div>`;
+  const mk=h=>{const d=h.value-h.par;return d<=-2?'eagle':d===-1?'birdie':d===1?'bogey':d>=2?'dbl':'';};
+  const nine=(hs,from,totLbl)=>{
+    let hdr='',par='',sc='';
+    hs.forEach((h,i)=>{hdr+=`<th>${from+i}</th>`;par+=`<td>${h.par}</td>`;sc+=`<td><span class="mk ${mk(h)}">${h.value}</span></td>`;});
+    const ps=hs.reduce((s,h)=>s+h.par,0), ss=hs.reduce((s,h)=>s+h.value,0);
+    return `<table class="sc"><thead><tr><th class="lab"></th>${hdr}<th class="tot">${totLbl}</th></tr></thead>`+
+      `<tbody><tr><td class="lab">Par</td>${par}<td class="tot">${ps}</td></tr>`+
+      `<tr><td class="lab">Score</td>${sc}<td class="tot">${ss}</td></tr></tbody></table>`;
+  };
+  const back=rd.holes.slice(9,18);
+  let h=`<div class="rd-block"><div class="rd-ttl">${label}</div><div class="sc-wrap">${nine(rd.holes.slice(0,9),1,'Out')}`;
+  if(back.length) h+=nine(back,10,'In');
+  return h+`</div></div>`;
 }
 function renderPlayer(g){
   const rounds=(g.holes||[]).map((rd,i)=>scoreCard(rd,'Round '+(i+1))).join('');
   let body;
-  if(rounds) body=rounds;
+  if(rounds) body=`<div class="legend"><span><i class="lg cir"></i>Birdie</span><span><i class="lg sq"></i>Bogey</span><span>double = eagle / dbl+</span></div>`+rounds;
   else if(g.teeTime && g.state==='STATUS_SCHEDULED'){
     const ms=new Date(g.teeTime).getTime();
     body=`<div class="sheet-tee"><div class="big">${new Date(ms).toLocaleTimeString('en-US',{timeZone:'Europe/London',hour:'numeric',minute:'2-digit'})} UK</div>`+
