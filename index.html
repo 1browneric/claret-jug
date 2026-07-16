@@ -660,24 +660,30 @@ function roundStats(rd){
 }
 function scoreCard(rd,label){
   if(!rd||!rd.holes||!rd.holes.length) return '';
+  const played=rd.holes;
   const mk=h=>{const d=h.value-h.par;return d<=-2?'eagle':d===-1?'birdie':d===1?'bogey':d>=2?'dbl':'';};
-  let run=0; const cum=rd.holes.map(h=>{run+=h.value-h.par;return run;});
+  let run=0; const cum=played.map(h=>{run+=h.value-h.par;return run;});
   const st=roundStats(rd);
-  const nine=(from,to,totLbl)=>{
-    const hs=rd.holes.slice(from,to);
-    if(!hs.length) return '';
-    let hdr='',par='',sc='',tp='';
-    hs.forEach((h,i)=>{const idx=from+i;
+  const nine=(from,to,totLbl)=>{                       // always render all 9 holes; blank boxes for unplayed
+    let hdr='',parRow='',sc='',tp='',parSum=0,scSum=0;
+    for(let idx=from;idx<to;idx++){
       hdr+=`<th>${idx+1}</th>`;
-      par+=`<td>${h.par}</td>`;
-      sc +=`<td><span class="mk ${mk(h)}">${h.value}</span></td>`;
-      tp +=`<td class="tp ${pcl(cum[idx])}">${fmtPar(cum[idx])}</td>`;
-    });
-    const ps=hs.reduce((s,h)=>s+h.par,0), ss=hs.reduce((s,h)=>s+h.value,0);
+      const h=played[idx];
+      const p=h?h.par:(PARS[idx]||'');
+      parRow+=`<td>${p}</td>`; if(typeof p==='number')parSum+=p;
+      if(h){
+        sc+=`<td><span class="mk ${mk(h)}">${h.value}</span></td>`;
+        tp+=`<td class="tp ${pcl(cum[idx])}">${fmtPar(cum[idx])}</td>`;
+        scSum+=h.value;
+      } else { sc+=`<td></td>`; tp+=`<td></td>`; }
+    }
+    const done=!!played[to-1];                          // nine complete -> show its totals
+    const scTot=done?scSum:'';
+    const tpTot=done?`<span class="${pcl(cum[to-1])}">${fmtPar(cum[to-1])}</span>`:'';
     return `<table class="sc"><thead><tr><th class="lab"></th>${hdr}<th class="tot">${totLbl}</th></tr></thead>`+
-      `<tbody><tr><td class="lab">Par</td>${par}<td class="tot">${ps}</td></tr>`+
-      `<tr><td class="lab">Score</td>${sc}<td class="tot">${ss}</td></tr>`+
-      `<tr><td class="lab">To Par</td>${tp}<td class="tot ${pcl(cum[to-1])}">${fmtPar(cum[to-1])}</td></tr></tbody></table>`;
+      `<tbody><tr><td class="lab">Par</td>${parRow}<td class="tot">${parSum}</td></tr>`+
+      `<tr><td class="lab">Score</td>${sc}<td class="tot">${scTot}</td></tr>`+
+      `<tr><td class="lab">To Par</td>${tp}<td class="tot">${tpTot}</td></tr></tbody></table>`;
   };
   const bits=[`<b class="${pcl(st.toPar)}">${fmtPar(st.toPar)}</b> to par`,
     st.birdies?`${st.birdies} birdie${st.birdies>1?'s':''}`:null,
