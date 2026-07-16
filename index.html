@@ -151,7 +151,12 @@
   .sheet-stats .v{font-size:18px;margin-top:4px;font-variant-numeric:tabular-nums}
   .sheet-body{padding:16px 16px 22px}
   .rd-block{margin-bottom:18px}
-  .rd-ttl{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+  .rd-ttl{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+  .rd-stats{font-size:12.5px;color:var(--muted);margin-bottom:10px;letter-spacing:.02em}
+  .rd-stats b{font-weight:bold;color:var(--navy)}
+  .rd-stats b.under{color:var(--red)}
+  .sc .tp{font-size:11px;font-variant-numeric:tabular-nums;color:var(--muted)}
+  .sc .tp.under,.sc .tot.under{color:var(--red)} .sc .tp.over,.sc .tot.over{color:var(--navy)}
   .sc-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
   .sc{border-collapse:collapse;font-variant-numeric:tabular-nums;width:100%;margin-bottom:11px}
   .sc td,.sc th{border:1px solid var(--rule);padding:4px 2px;text-align:center;font-size:12px;font-weight:normal;min-width:30px;height:32px}
@@ -646,21 +651,52 @@ function toggleOwned(){
 
 /* ================= player round modal ================= */
 function statBox(k,v){return `<div><div class="k">${k}</div><div class="v">${v}</div></div>`;}
+const fmtPar=v=>v===0?'E':(v>0?'+'+v:''+v);
+const pcl=v=>v<0?'under':(v>0?'over':'lvl');
+function roundStats(rd){
+  let pts=0,b=0,e=0,bg=0,streak=0,got=false,clean=true;
+  rd.holes.forEach(h=>{
+    pts+=holePts(h);
+    const d=h.value-h.par;
+    if(d===-1) b++;
+    if(d<=-2) e++;
+    if(d>=1){bg++;clean=false;}
+    if(d<=-1){streak++; if(streak>=3&&!got){pts+=DK.STREAK;got=true;}} else streak=0;
+  });
+  const ss=rd.holes.reduce((s,h)=>s+h.value,0), ps=rd.holes.reduce((s,h)=>s+h.par,0);
+  const complete=rd.holes.length===18;
+  if(complete&&clean) pts+=DK.BOGEY_FREE;
+  return {toPar:ss-ps, birdies:b, eagles:e, bogeys:bg, pts, complete, played:rd.holes.length};
+}
 function scoreCard(rd,label){
   if(!rd||!rd.holes||!rd.holes.length) return '';
   const mk=h=>{const d=h.value-h.par;return d<=-2?'eagle':d===-1?'birdie':d===1?'bogey':d>=2?'dbl':'';};
-  const nine=(hs,from,totLbl)=>{
-    let hdr='',par='',sc='';
-    hs.forEach((h,i)=>{hdr+=`<th>${from+i}</th>`;par+=`<td>${h.par}</td>`;sc+=`<td><span class="mk ${mk(h)}">${h.value}</span></td>`;});
+  let run=0; const cum=rd.holes.map(h=>{run+=h.value-h.par;return run;});
+  const st=roundStats(rd);
+  const nine=(from,to,totLbl)=>{
+    const hs=rd.holes.slice(from,to);
+    if(!hs.length) return '';
+    let hdr='',par='',sc='',tp='';
+    hs.forEach((h,i)=>{const idx=from+i;
+      hdr+=`<th>${idx+1}</th>`;
+      par+=`<td>${h.par}</td>`;
+      sc +=`<td><span class="mk ${mk(h)}">${h.value}</span></td>`;
+      tp +=`<td class="tp ${pcl(cum[idx])}">${fmtPar(cum[idx])}</td>`;
+    });
     const ps=hs.reduce((s,h)=>s+h.par,0), ss=hs.reduce((s,h)=>s+h.value,0);
     return `<table class="sc"><thead><tr><th class="lab"></th>${hdr}<th class="tot">${totLbl}</th></tr></thead>`+
       `<tbody><tr><td class="lab">Par</td>${par}<td class="tot">${ps}</td></tr>`+
-      `<tr><td class="lab">Score</td>${sc}<td class="tot">${ss}</td></tr></tbody></table>`;
+      `<tr><td class="lab">Score</td>${sc}<td class="tot">${ss}</td></tr>`+
+      `<tr><td class="lab">To Par</td>${tp}<td class="tot ${pcl(cum[to-1])}">${fmtPar(cum[to-1])}</td></tr></tbody></table>`;
   };
-  const back=rd.holes.slice(9,18);
-  let h=`<div class="rd-block"><div class="rd-ttl">${label}</div><div class="sc-wrap">${nine(rd.holes.slice(0,9),1,'Out')}`;
-  if(back.length) h+=nine(back,10,'In');
-  return h+`</div></div>`;
+  const bits=[`<b class="${pcl(st.toPar)}">${fmtPar(st.toPar)}</b> to par`,
+    st.birdies?`${st.birdies} birdie${st.birdies>1?'s':''}`:null,
+    st.eagles?`${st.eagles} eagle${st.eagles>1?'s':''}`:null,
+    st.bogeys?`${st.bogeys} bogey${st.bogeys>1?'s':''}`:null,
+    `<b>${fmt(st.pts)}</b> pts`].filter(Boolean).join(' &middot; ');
+  return `<div class="rd-block"><div class="rd-ttl">${label}${st.complete?'':' &middot; thru '+st.played}</div>`+
+    `<div class="rd-stats">${bits}</div>`+
+    `<div class="sc-wrap">${nine(0,9,'Out')}${nine(9,18,'In')}</div></div>`;
 }
 function renderPlayer(g){
   const rounds=(g.holes||[]).map((rd,i)=>scoreCard(rd,'Round '+(i+1))).join('');
