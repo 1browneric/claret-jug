@@ -181,8 +181,9 @@
     h1{font-size:26px} .jug{height:56px}
     .wx{text-align:left;min-width:0;flex-basis:100%;order:3;margin-top:4px}
     .meta{text-align:left;gap:22px}
-    .g-row,.hd-lbl{grid-template-columns:28px 1fr 42px 46px 50px;gap:8px;padding-left:14px}
-    .g-row .gt,.g-row .gh,.chev,.hd-lbl span:nth-child(4),.hd-lbl span:nth-child(6){display:none}
+    .g-row,.hd-lbl{grid-template-columns:24px 1fr 28px 40px 34px 40px;gap:6px;padding-left:12px;padding-right:12px}
+    .g-row .gh,.chev,.hd-lbl span:nth-child(6){display:none}
+    .gn{font-size:15px} .gp,.gs,.gx{font-size:12.5px} .gt{font-size:10.5px}
     #board .cmp-scroll{margin:0 -22px}
     .tabbar button{padding:13px 15px;letter-spacing:.08em}
   }
@@ -606,9 +607,10 @@ function render(){
   document.getElementById('cmpBody').innerHTML=ros.map((g,i)=>{
     const d=g.dk||{pts:0,birdies:0,eagles:0,bogeys:0,cut:false,left:0};
     const own=(ROSTER[g.id]||[]).map(x=>ENTRANTS[x].name).join(', ');
-    return `<tr class="${d.cut?'cut':''}">
+    const cOpen=expanded.has('c:'+g.id);
+    return `<tr class="click ${d.cut?'cut':''} ${cOpen?'exp':''}" onclick="toggleCmp('${g.id}')">
       <td class="num own">${i+1}</td>
-      <td><span class="pcell">${img(g)}${flag(g)}${g.name}</span></td>
+      <td><span class="pcell">${img(g)}${flag(g)}${g.name}<span class="chev">&#9662;</span></span></td>
       <td class="own">${own}</td>
       <td class="num">${d.cut?'CUT':g.pos}</td>
       <td class="num ${parCls((g.toPar&&g.toPar.value)||0)}">${toPar(g)}</td>
@@ -619,7 +621,7 @@ function render(){
       <td class="num">${d.bogeys}</td>
       <td class="num"><b>${fmt(d.pts)}</b></td>
       <td><span class="bar ${d.pts<0?'neg':''}"><i style="width:${Math.min(100,Math.abs(d.pts)/best*100)}%"></i></span></td>
-    </tr>`;
+    </tr>${cOpen?('<tr class="detail-row"><td colspan="12">'+scoreDetail(g)+'</td></tr>'):''}`;
   }).join('');
 }
 
@@ -720,6 +722,11 @@ function togglePool(teamIdx,pickIdx,id){
 }
 function toggleBoard(id){
   const k='b:'+id;
+  if(expanded.has(k)) expanded.delete(k); else { expanded.add(k); ensureHoles(id); }
+  render();
+}
+function toggleCmp(id){
+  const k='c:'+id;
   if(expanded.has(k)) expanded.delete(k); else { expanded.add(k); ensureHoles(id); }
   render();
 }
