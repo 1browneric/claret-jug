@@ -120,8 +120,11 @@
   .cmp-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
   .cmp{min-width:900px}
   .board-tbl{min-width:356px;table-layout:fixed}
-  .board-tbl .pcell{min-width:0}
-  .bn{min-width:0;overflow-wrap:anywhere;line-height:1.2}
+  .board-tbl .pcell{min-width:0;gap:6px}
+  .bn{min-width:0;overflow-wrap:break-word;line-height:1.2}
+  .board-tbl th{white-space:normal}
+  .board-tbl th,.board-tbl td{padding-left:6px;padding-right:6px}
+  .board-tbl .chip{font-size:9px;padding:2px 5px;letter-spacing:.03em;margin-right:3px}
   .own{font-size:11px;color:var(--muted);letter-spacing:.05em}
 
   .tee{line-height:1.2}
@@ -232,10 +235,10 @@
     <div class="cmp-scroll">
     <table class="board-tbl">
       <thead><tr>
-        <th style="width:34px">Pos</th><th style="width:112px">Golfer</th>
+        <th style="width:32px">Pos</th><th style="width:130px">Golfer</th>
         <th class="num" style="width:40px">Score</th>
-        <th class="num" style="width:74px">Thru / Tee</th>
-        <th style="width:96px">Owner</th>
+        <th class="num" style="width:66px">Thru / Tee</th>
+        <th style="width:88px">Owner</th>
       </tr></thead>
       <tbody id="boardBody"></tbody>
     </table>
