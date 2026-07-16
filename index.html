@@ -700,7 +700,7 @@ function scoreCard(rd,label){
 function scoreDetail(g){
   const rounds=(g.holes||[]).map((rd,i)=>scoreCard(rd,'Round '+(i+1))).join('');
   let body;
-  if(rounds) body=`<div class="legend"><span><i class="lg cir"></i>Birdie</span><span><i class="lg sq"></i>Bogey</span><span>double = eagle / dbl+</span></div>`+rounds;
+  if(rounds) body=rounds;
   else if(g.teeTime && g.state==='STATUS_SCHEDULED'){
     const ms=new Date(g.teeTime).getTime();
     body=`<div class="sheet-tee"><div class="big">${new Date(ms).toLocaleTimeString('en-US',{timeZone:'Europe/London',hour:'numeric',minute:'2-digit'})} UK</div>`+
