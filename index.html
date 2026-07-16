@@ -119,14 +119,14 @@
   .toggle:hover{border-color:var(--navy)}
   .cmp-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
   .cmp{min-width:900px}
-  .board-tbl{min-width:552px;table-layout:fixed}
+  .board-tbl{min-width:356px;table-layout:fixed}
   .board-tbl .pcell{min-width:0}
   .bn{min-width:0;overflow-wrap:anywhere;line-height:1.2}
   .own{font-size:11px;color:var(--muted);letter-spacing:.05em}
 
-  .tee{line-height:1.25}
-  .tee b{font-weight:normal;display:block;font-size:14px}
-  .tee span{display:block;font-size:11px;color:var(--muted)}
+  .tee{line-height:1.2}
+  .tee b{font-weight:normal;display:block;font-size:12px}
+  .tee span{display:block;font-size:10px;color:var(--muted)}
 
   #pins{margin:0 -22px}
   .pinsheet{width:100%;height:auto;display:block}
@@ -179,7 +179,7 @@
     .wx{text-align:left;min-width:0;flex-basis:100%;order:3;margin-top:4px}
     .meta{text-align:left;gap:22px}
     .g-row,.hd-lbl{grid-template-columns:28px 1fr 42px 46px 50px;gap:8px;padding-left:14px}
-    .g-row .gt,.g-row .gh,.g-row .chev,.hd-lbl span:nth-child(4),.hd-lbl span:nth-child(6){display:none}
+    .g-row .gt,.g-row .gh,.chev,.hd-lbl span:nth-child(4),.hd-lbl span:nth-child(6){display:none}
     #board .cmp-scroll{margin:0 -22px}
     .tabbar button{padding:13px 15px;letter-spacing:.08em}
   }
@@ -232,11 +232,10 @@
     <div class="cmp-scroll">
     <table class="board-tbl">
       <thead><tr>
-        <th style="width:46px">Pos</th><th style="width:150px">Golfer</th>
-        <th class="num" style="width:52px">Score</th>
-        <th class="num" style="width:118px">Thru / Tee</th>
-        <th class="num rd-col" style="width:36px">Rd</th>
-        <th style="width:150px">Owner</th>
+        <th style="width:34px">Pos</th><th style="width:112px">Golfer</th>
+        <th class="num" style="width:40px">Score</th>
+        <th class="num" style="width:74px">Thru / Tee</th>
+        <th style="width:96px">Owner</th>
       </tr></thead>
       <tbody id="boardBody"></tbody>
     </table>
@@ -508,7 +507,7 @@ function boardThru(g){
   if(g.state==='STATUS_SCHEDULED' && g.teeTime){
     const ms=new Date(g.teeTime).getTime();
     return `<div class="tee"><b>${tzTime(ms,'Europe/London')} UK</b>`+
-           `<span>${tzTime(ms,'America/Chicago')} CT &middot; ${tzTime(ms,'America/New_York')} ET</span></div>`;
+           `<span>${tzTime(ms,'America/Chicago')} CT</span><span>${tzTime(ms,'America/New_York')} ET</span></div>`;
   }
   return thru(g);
 }
@@ -590,9 +589,8 @@ function render(){
         <td><span class="pcell">${img(g)}${flag(g)}<span class="bn">${g.name}</span><span class="chev">&#9662;</span></span></td>
         <td class="num ${parCls((g.toPar&&g.toPar.value)||0)}">${toPar(g)}</td>
         <td class="num">${boardThru(g)}</td>
-        <td class="num rd-col">${g.round||'-'}</td>
         <td>${chips}</td>
-      </tr>${bOpen?('<tr class="detail-row"><td colspan="6">'+scoreDetail(g)+'</td></tr>'):''}`;
+      </tr>${bOpen?('<tr class="detail-row"><td colspan="5">'+scoreDetail(g)+'</td></tr>'):''}`;
     }).join('');
 
   const ros=Object.keys(ROSTER).map(id=>FIELD[id]).sort((a,b)=>(b.dk?b.dk.pts:0)-(a.dk?a.dk.pts:0));
