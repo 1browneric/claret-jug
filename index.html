@@ -91,8 +91,14 @@
   .g-clip video{display:block;width:100%;max-height:420px;background:#000;border:1px solid var(--rule)}
   .g-row.slot .shot{background:#EFEBE1;border-style:dashed}
   .g-row.slot .gn span{font-style:italic}
-  .cut .gn span{text-decoration:line-through;text-decoration-color:var(--red)}
+  .cut .gn span,.cut .bn{text-decoration:line-through;text-decoration-color:var(--red);text-decoration-thickness:2px}
   .cut .gp{color:var(--red)}
+  /* eliminated: headshot becomes a red X (video-game knockout) */
+  .shot.cutx{background:#1C1C1C;border-color:var(--red);position:relative;overflow:hidden}
+  .shot.cutx::before,.shot.cutx::after{content:"";position:absolute;top:50%;left:16%;right:16%;
+    height:3px;margin-top:-1.5px;border-radius:2px;background:var(--red)}
+  .shot.cutx::before{transform:rotate(45deg)} .shot.cutx::after{transform:rotate(-45deg)}
+  .pcell .shot.cutx{width:28px;height:28px}
   .under{color:var(--red)} .over{color:var(--navy)} .lvl{color:var(--muted)}
   .hd-lbl{display:grid;grid-template-columns:34px 1fr 58px 48px 52px 46px 60px;gap:11px;
           padding:7px 18px 7px 22px;border-bottom:1px solid #EDE8DC;background:#F7F3E9;
@@ -508,7 +514,9 @@ function thru(g){
     return g.teeTime?new Date(g.teeTime).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}):'--';
   return (g.thru===18||g.thru===0)?'F':g.thru;
 }
-const img=g=>g.shot?`<img class="shot" src="${g.shot}" alt="" loading="lazy">`:`<span class="shot"></span>`;
+const isCut=g=>g&&(g.state==='STATUS_CUT'||g.state==='STATUS_WITHDRAWN');
+const img=g=>isCut(g)?`<span class="shot cutx" role="img" aria-label="Cut"></span>`
+  :g.shot?`<img class="shot" src="${g.shot}" alt="" loading="lazy">`:`<span class="shot"></span>`;
 const flag=g=>g.flag?`<img class="flag" src="${g.flag}" alt="${g.country}" loading="lazy">`:'';
 
 /* leaderboard sort: position first, always; cut/WD sink to the bottom */
@@ -648,7 +656,7 @@ function render(){
         return `<span class="chip ${e.me?'me':''}" style="--c:${e.color}">${e.name}</span>`;}).join('');
       const bOpen=expanded.has('b:'+g.id);
       const rCells=Array.from({length:nR},(_,i)=>`<td class="num rd">${rdVal(g,i+1)}</td>`).join('');
-      return cutRow+`<tr class="click ${mine?'mine':(own.length?'owned':'')} ${bOpen?'exp':''}" onclick="toggleBoard('${g.id}')">
+      return cutRow+`<tr class="click ${mine?'mine':(own.length?'owned':'')} ${isCut(g)?'cut':''} ${bOpen?'exp':''}" onclick="toggleBoard('${g.id}')">
         <td>${g.state==='STATUS_CUT'?'<span style="color:var(--red)">CUT</span>':g.pos}</td>
         <td><span class="pcell">${img(g)}${flag(g)}<span class="bn">${g.name}</span><span class="chev">&#9662;</span></span></td>
         <td class="num ${parCls((g.toPar&&g.toPar.value)||0)}"><b>${toPar(g)}</b></td>
@@ -671,7 +679,7 @@ function render(){
     const cOpen=expanded.has('c:'+g.id);
     return `<tr class="click ${d.cut?'cut':''} ${cOpen?'exp':''}" onclick="toggleCmp('${g.id}')">
       <td class="num own">${i+1}</td>
-      <td><span class="pcell">${img(g)}${flag(g)}${g.name}<span class="chev">&#9662;</span></span></td>
+      <td><span class="pcell">${img(g)}${flag(g)}<span class="bn">${g.name}</span><span class="chev">&#9662;</span></span></td>
       <td class="own">${own}</td>
       <td class="num">${d.cut?'CUT':g.pos}</td>
       <td class="num ${parCls((g.toPar&&g.toPar.value)||0)}">${toPar(g)}</td>
