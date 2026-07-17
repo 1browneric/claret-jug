@@ -125,6 +125,7 @@
   .board-tbl th{white-space:normal}
   .board-tbl th,.board-tbl td{padding-left:6px;padding-right:6px}
   .board-tbl .chip{font-size:9px;padding:2px 5px;letter-spacing:.03em;margin-right:3px}
+  .board-tbl td.rd{font-size:13px;color:var(--muted)}
   .own{font-size:11px;color:var(--muted);letter-spacing:.05em}
 
   .tee{line-height:1.2}
@@ -223,7 +224,7 @@
     <button role="tab" id="t-pool"  aria-selected="true"  onclick="showTab('pool')">Pool</button>
     <button role="tab" id="t-board" aria-selected="false" onclick="showTab('board')">Leaderboard</button>
     <button role="tab" id="t-cmp"   aria-selected="false" onclick="showTab('cmp')">Compare</button>
-    <button role="tab" id="t-pins"  aria-selected="false" onclick="showTab('pins')">Day 1 Pins</button>
+    <button role="tab" id="t-pins"  aria-selected="false" onclick="showTab('pins')">Day 2 Pins</button>
   </div>
 </div>
 
@@ -235,12 +236,7 @@
     <button class="toggle" id="ownedBtn" onclick="toggleOwned()">Owned golfers only</button>
     <div class="cmp-scroll">
     <table class="board-tbl">
-      <thead><tr>
-        <th style="width:32px">Pos</th><th style="width:130px">Golfer</th>
-        <th class="num" style="width:40px">Score</th>
-        <th class="num" style="width:66px">Thru / Tee</th>
-        <th style="width:88px">Owner</th>
-      </tr></thead>
+      <thead><tr id="boardHead"></tr></thead>
       <tbody id="boardBody"></tbody>
     </table>
     </div>
@@ -267,9 +263,9 @@
   </section>
 
   <section id="pins" class="hide">
-    <img class="pinsheet" src="pins-day1.jpg" alt="Day 1 pin locations"
+    <img class="pinsheet" src="pins-day2.jpg" alt="Day 2 pin locations"
          onerror="this.style.display='none';document.getElementById('pinsMissing').classList.remove('hide')">
-    <div id="pinsMissing" class="pins-miss hide">Day&nbsp;1 pin sheet posts here.</div>
+    <div id="pinsMissing" class="pins-miss hide">Day&nbsp;2 pin sheet posts here.</div>
   </section>
 </main>
 
@@ -341,6 +337,7 @@ async function load(){
         toPar:(c.statistics||[]).find(x=>x.name==='scoreToPar'),
         thru:s.thru,round:s.period,teeTime:s.teeTime,
         state:(s.type&&s.type.name)||'STATUS_SCHEDULED',
+        lines:c.linescores||[],
         dk:null,holes:null
       };
     });
@@ -424,6 +421,7 @@ function simulate(){
     if(s.toPar>line){
       g.state='STATUS_CUT'; g.thru=18; g.round=2;
       g.holes=s.rounds; g.mockToPar=s.toPar;
+      g.lines=s.rounds.map((r,i)=>({period:i+1,value:r.strokes}));
       return;
     }
     const thru=6+Math.floor(s.rand()*13);                // R3 thru 6-18
@@ -433,6 +431,7 @@ function simulate(){
     const r3par=r3.holes.reduce((x,h)=>x+h.par,0);
     g.state='STATUS_IN_PROGRESS'; g.thru=thru; g.round=3;
     g.holes=[...s.rounds, r3];
+    g.lines=s.rounds.map((r,i)=>({period:i+1,value:r.strokes}));
     g.mockToPar=s.toPar+(r3.strokes-r3par);
   });
 
@@ -482,7 +481,9 @@ function score(g){
 const fmt=n=>(Math.round(n*10)/10).toFixed(1);
 const parCls=v=>v<0?'under':(v>0?'over':'lvl');
 function toPar(g){
-  if(!g||g.state==='STATUS_SCHEDULED') return '--';
+  if(!g) return '--';
+  const played=(g.lines||[]).some(l=>typeof l.value==='number')||((g.holes||[]).length>0);
+  if(g.state==='STATUS_SCHEDULED'&&!played) return '--';   // hasn't hit a shot all week
   const t=g.toPar;
   return (!t||t.displayValue==='-')?'E':t.displayValue;
 }
@@ -497,14 +498,30 @@ function thru(g){
 const img=g=>g.shot?`<img class="shot" src="${g.shot}" alt="" loading="lazy">`:`<span class="shot"></span>`;
 const flag=g=>g.flag?`<img class="flag" src="${g.flag}" alt="${g.country}" loading="lazy">`:'';
 
-/* tee-time helpers: sort by tee time until teed off, then by score; show UK + CT + ET */
+/* leaderboard sort: position first, always; cut/WD sink to the bottom */
 const teeMs=g=>(g&&g.teeTime)?new Date(g.teeTime).getTime():Infinity;
 const started=g=>g.state!=='STATUS_SCHEDULED';
+const gone=g=>g.state==='STATUS_CUT'||g.state==='STATUS_WITHDRAWN';
 function boardCmp(a,b){
-  const aS=started(a), bS=started(b);
-  if(aS!==bS) return aS?-1:1;                                   // teed-off above not-yet-started
-  if(aS) return ((a.posNum||999)-(b.posNum||999))||(teeMs(a)-teeMs(b))||a.name.localeCompare(b.name);
-  return (teeMs(a)-teeMs(b))||a.name.localeCompare(b.name);     // both waiting -> earliest tee first
+  if(gone(a)!==gone(b)) return gone(a)?1:-1;                    // cut/WD below everyone still playing
+  const tp=g=>(g.toPar&&typeof g.toPar.value==='number')?g.toPar.value:999;
+  return ((a.posNum||999)-(b.posNum||999))||(tp(a)-tp(b))||(teeMs(a)-teeMs(b))||a.name.localeCompare(b.name);
+}
+
+/* per-round score columns: rounds that have started so far (R1 now, R2 Friday, ...) */
+function roundCount(){
+  let n=1;
+  Object.values(FIELD).forEach(g=>{
+    (g.lines||[]).forEach(l=>{if(typeof l.value==='number'&&l.period>n)n=l.period;});
+    if(g.state==='STATUS_IN_PROGRESS'&&(g.round||0)>n)n=g.round;
+  });
+  return Math.min(n,4);
+}
+function rdVal(g,r){
+  const l=(g.lines||[]).find(x=>x.period===r);
+  if(!l||typeof l.value!=='number') return '&mdash;';
+  if(g.state==='STATUS_IN_PROGRESS'&&g.round===r&&g.thru>0&&g.thru<18) return '&mdash;'; // round underway, not posted
+  return l.value;
 }
 const tzTime=(ms,tz)=>new Date(ms).toLocaleTimeString('en-US',{timeZone:tz,hour:'numeric',minute:'2-digit'}).replace(' AM','a').replace(' PM','p');
 function boardThru(g){
@@ -580,6 +597,12 @@ function render(){
   }).join('');
 
   const all=Object.values(FIELD).sort(boardCmp);
+  const nR=roundCount();
+  document.getElementById('boardHead').innerHTML=
+    `<th style="width:32px">Pos</th><th style="width:130px">Golfer</th>`+
+    `<th class="num" style="width:44px">Total</th>`+
+    Array.from({length:nR},(_,i)=>`<th class="num" style="width:34px">R${i+1}</th>`).join('')+
+    `<th class="num" style="width:66px">Thru / Tee</th><th style="width:88px">Owner</th>`;
   document.getElementById('boardBody').innerHTML=all
     .filter(g=>!ownedOnly||ROSTER[g.id])
     .map(g=>{
@@ -588,13 +611,15 @@ function render(){
       const chips=own.map(i=>{const e=ENTRANTS[i];
         return `<span class="chip ${e.me?'me':''}" style="--c:${e.color}">${e.name}</span>`;}).join('');
       const bOpen=expanded.has('b:'+g.id);
+      const rCells=Array.from({length:nR},(_,i)=>`<td class="num rd">${rdVal(g,i+1)}</td>`).join('');
       return `<tr class="click ${mine?'mine':(own.length?'owned':'')} ${bOpen?'exp':''}" onclick="toggleBoard('${g.id}')">
         <td>${g.state==='STATUS_CUT'?'<span style="color:var(--red)">CUT</span>':g.pos}</td>
         <td><span class="pcell">${img(g)}${flag(g)}<span class="bn">${g.name}</span><span class="chev">&#9662;</span></span></td>
-        <td class="num ${parCls((g.toPar&&g.toPar.value)||0)}">${toPar(g)}</td>
+        <td class="num ${parCls((g.toPar&&g.toPar.value)||0)}"><b>${toPar(g)}</b></td>
+        ${rCells}
         <td class="num">${boardThru(g)}</td>
         <td>${chips}</td>
-      </tr>${bOpen?('<tr class="detail-row"><td colspan="5">'+scoreDetail(g)+'</td></tr>'):''}`;
+      </tr>${bOpen?('<tr class="detail-row"><td colspan="'+(5+nR)+'">'+scoreDetail(g)+'</td></tr>'):''}`;
     }).join('');
 
   const ros=Object.keys(ROSTER).map(id=>FIELD[id]).sort((a,b)=>(b.dk?b.dk.pts:0)-(a.dk?a.dk.pts:0));
