@@ -87,6 +87,8 @@
   .gx{font-size:16px}
   .cut{opacity:.55}
   .g-row.slot{color:#B4AC9B}
+  .g-clip{padding:10px 18px 12px 22px;border-bottom:1px solid #F1ECE0;background:#FCFBF7}
+  .g-clip video{display:block;width:100%;max-height:420px;background:#000;border:1px solid var(--rule)}
   .g-row.slot .shot{background:#EFEBE1;border-style:dashed}
   .g-row.slot .gn span{font-style:italic}
   .cut .gn span{text-decoration:line-through;text-decoration-color:var(--red)}
@@ -126,6 +128,12 @@
   .board-tbl th,.board-tbl td{padding-left:6px;padding-right:6px}
   .board-tbl .chip{font-size:9px;padding:2px 5px;letter-spacing:.03em;margin-right:3px}
   .board-tbl td.rd{font-size:13px;color:var(--muted)}
+  tr.cutline td{background:var(--navy);color:var(--gold);text-align:center;
+    font-size:10px;letter-spacing:.16em;text-transform:uppercase;padding:6px 12px;
+    border-top:2px solid var(--gold);border-bottom:2px solid var(--gold)}
+  tr.cutline td{background:var(--navy);color:var(--gold);text-align:center;font-size:10px;
+    letter-spacing:.18em;text-transform:uppercase;padding:6px 12px;border-top:2px solid var(--gold);
+    border-bottom:2px solid var(--gold)}
   .own{font-size:11px;color:var(--muted);letter-spacing:.05em}
 
   .tee{line-height:1.2}
@@ -286,6 +294,11 @@ const ENTRANTS = [
 
 const PARS = [4,4,4,3,4,4,3,4,4,4,4,3,4,5,3,4,5,4];   // Royal Birkdale, par 70
 const TOTAL_HOLES = 72;
+
+/* inline clips: shown in a team's roster right below the named golfer */
+const CLIPS = [
+  { team:'Dr. Swanson', after:'Jordan Spieth', src:'spieth-three-putt.mp4' }
+];
 
 /* ================= DK scoring ================= */
 const DK={DBL_EAGLE:13,EAGLE:8,BIRDIE:3,PAR:.5,BOGEY:-.5,DBL:-1,WORSE:-1,ACE:10,STREAK:3,BOGEY_FREE:3,SUB70:5};
@@ -508,6 +521,18 @@ function boardCmp(a,b){
   return ((a.posNum||999)-(b.posNum||999))||(tp(a)-tp(b))||(teeMs(a)-teeMs(b))||a.name.localeCompare(b.name);
 }
 
+/* projected cut: to-par of the 70th player (top 70 and ties) — shown through Rounds 1-2.
+   Once play reaches R3 or a mass cut has landed, the cut is real, so we stop projecting. */
+function projCut(){
+  const vals=Object.values(FIELD);
+  const period=(EVENT&&EVENT.status&&EVENT.status.period)||1;
+  const cutCount=vals.filter(g=>g.state==='STATUS_CUT').length;
+  if(period>=3||cutCount>10) return null;
+  const sc=vals.filter(g=>!gone(g)&&g.toPar&&typeof g.toPar.value==='number')
+    .map(g=>g.toPar.value).sort((a,b)=>a-b);
+  return sc.length>=70?sc[69]:null;
+}
+
 /* per-round score columns: rounds that have started so far (R1 now, R2 Friday, ...) */
 function roundCount(){
   let n=1;
@@ -565,6 +590,9 @@ function render(){
         <span class="gh">0</span><span class="gx">0.0</span></div>`;
       const d=g.dk||{}; const c=d.cut;
       const pk='p:'+t.e.idx+':'+gi, pOpen=expanded.has(pk);
+      const clip=CLIPS.find(x=>x.team===t.e.name&&norm(x.after)===norm(g.name));
+      const clipHtml=clip?`<div class="g-clip" onclick="event.stopPropagation()">
+        <video src="${clip.src}" controls playsinline preload="metadata"></video></div>`:'';
       return `<div class="g-row click ${c?'cut':''} ${pOpen?'exp':''}" onclick="event.stopPropagation();togglePool(${t.e.idx},${gi},'${g.id}')">
         ${img(g)}
         <span class="gn">${flag(g)}<span>${g.name}</span><span class="chev">&#9662;</span></span>
@@ -573,7 +601,7 @@ function render(){
         <span class="gs ${parCls((g.toPar&&g.toPar.value)||0)}">${toPar(g)}</span>
         <span class="gh">${c?'&mdash;':d.left}</span>
         <span class="gx">${d.pts!==undefined?fmt(d.pts):'0.0'}</span>
-      </div>${pOpen?('<div class="g-detail">'+scoreDetail(g)+'</div>'):''}`;
+      </div>${pOpen?('<div class="g-detail">'+scoreDetail(g)+'</div>'):''}${clipHtml}`;
     }).join('');
     const cls = (anyRoster ? (i===0?'lead':'') : '') + (openTeams.has(t.e.idx)?' open':'');
     const sub = t.set
@@ -603,16 +631,24 @@ function render(){
     `<th class="num" style="width:44px">Total</th>`+
     Array.from({length:nR},(_,i)=>`<th class="num" style="width:34px">R${i+1}</th>`).join('')+
     `<th class="num" style="width:66px">Thru / Tee</th><th style="width:88px">Owner</th>`;
+  const cutVal=projCut();
+  let cutDrawn=false;
   document.getElementById('boardBody').innerHTML=all
     .filter(g=>!ownedOnly||ROSTER[g.id])
     .map(g=>{
+      let cutRow='';
+      if(cutVal!==null&&!cutDrawn&&!gone(g)&&g.toPar&&typeof g.toPar.value==='number'&&g.toPar.value>cutVal){
+        cutDrawn=true;
+        const cv=cutVal===0?'E':(cutVal>0?'+'+cutVal:''+cutVal);
+        cutRow=`<tr class="cutline"><td colspan="${5+nR}">Projected Cut &middot; ${cv} &middot; Top 70 and ties</td></tr>`;
+      }
       const own=ROSTER[g.id]||[];
       const mine=own.some(i=>ENTRANTS[i].me);
       const chips=own.map(i=>{const e=ENTRANTS[i];
         return `<span class="chip ${e.me?'me':''}" style="--c:${e.color}">${e.name}</span>`;}).join('');
       const bOpen=expanded.has('b:'+g.id);
       const rCells=Array.from({length:nR},(_,i)=>`<td class="num rd">${rdVal(g,i+1)}</td>`).join('');
-      return `<tr class="click ${mine?'mine':(own.length?'owned':'')} ${bOpen?'exp':''}" onclick="toggleBoard('${g.id}')">
+      return cutRow+`<tr class="click ${mine?'mine':(own.length?'owned':'')} ${bOpen?'exp':''}" onclick="toggleBoard('${g.id}')">
         <td>${g.state==='STATUS_CUT'?'<span style="color:var(--red)">CUT</span>':g.pos}</td>
         <td><span class="pcell">${img(g)}${flag(g)}<span class="bn">${g.name}</span><span class="chev">&#9662;</span></span></td>
         <td class="num ${parCls((g.toPar&&g.toPar.value)||0)}"><b>${toPar(g)}</b></td>
