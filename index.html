@@ -134,6 +134,7 @@
   .board-tbl th,.board-tbl td{padding-left:6px;padding-right:6px}
   .board-tbl .chip{font-size:9px;padding:2px 5px;letter-spacing:.03em;margin-right:3px}
   .board-tbl td.rd{font-size:13px;color:var(--muted)}
+  .board-tbl td.rd .rtee{font-size:12px;font-style:italic;opacity:.85}
   tr.cutline td{background:var(--navy);color:var(--gold);text-align:center;
     font-size:10px;letter-spacing:.16em;text-transform:uppercase;padding:6px 12px;
     border-top:2px solid var(--gold);border-bottom:2px solid var(--gold)}
@@ -554,12 +555,15 @@ function liveRoundToPar(g,r){
 }
 function rdVal(g,r){
   if(g.state==='STATUS_IN_PROGRESS'&&g.round===r&&g.thru>0&&g.thru<18){
-    const rp=liveRoundToPar(g,r);                       // running to-par shown on the line while the round is underway
+    const rp=liveRoundToPar(g,r);                       // on the course: running to-par
     return rp===null ? '&mdash;' : (rp===0?'E':(rp>0?'+'+rp:''+rp));
   }
   const l=(g.lines||[]).find(x=>x.period===r);
-  if(!l||typeof l.value!=='number') return '&mdash;';
-  return l.value;                                        // posted round: strokes total
+  if(l&&typeof l.value==='number') return l.value;      // posted round: strokes total
+  const cur=(EVENT&&EVENT.status&&EVENT.status.period)||roundCount();
+  if(r===cur&&g.state==='STATUS_SCHEDULED'&&g.teeTime)  // not out yet: tee time until they start
+    return `<span class="rtee">${tzTime(new Date(g.teeTime).getTime(),'Europe/London')}</span>`;
+  return '&mdash;';
 }
 const tzTime=(ms,tz)=>new Date(ms).toLocaleTimeString('en-US',{timeZone:tz,hour:'numeric',minute:'2-digit'}).replace(' AM','a').replace(' PM','p');
 function boardThru(g){
