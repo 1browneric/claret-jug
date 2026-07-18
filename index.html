@@ -146,10 +146,6 @@
   .tee b{font-weight:normal;display:block;font-size:12px}
   .tee span{display:block;font-size:10px;color:var(--muted)}
 
-  #pins{margin:0 -22px}
-  .pinsheet{width:100%;height:auto;display:block}
-  .pins-miss{padding:44px 18px;margin:30px 22px 0;text-align:center;color:var(--muted);font-size:15px;background:var(--card);border:1px solid var(--rule)}
-
   .click{cursor:pointer}
   .g-row.click:hover{background:#F4EFE2}
   tr.click:hover td{background:#FBF7EC}
@@ -238,7 +234,6 @@
     <button role="tab" id="t-pool"  aria-selected="true"  onclick="showTab('pool')">Pool</button>
     <button role="tab" id="t-board" aria-selected="false" onclick="showTab('board')">Leaderboard</button>
     <button role="tab" id="t-cmp"   aria-selected="false" onclick="showTab('cmp')">Compare</button>
-    <button role="tab" id="t-pins"  aria-selected="false" onclick="showTab('pins')">Day 2 Pins</button>
   </div>
 </div>
 
@@ -274,12 +269,6 @@
         <tbody id="cmpBody"></tbody>
       </table>
     </div>
-  </section>
-
-  <section id="pins" class="hide">
-    <img class="pinsheet" src="pins-day2.jpg" alt="Day 2 pin locations"
-         onerror="this.style.display='none';document.getElementById('pinsMissing').classList.remove('hide')">
-    <div id="pinsMissing" class="pins-miss hide">Day&nbsp;2 pin sheet posts here.</div>
   </section>
 </main>
 
@@ -550,11 +539,27 @@ function roundCount(){
   });
   return Math.min(n,4);
 }
+const ROUND_PAR=PARS.reduce((s,p)=>s+p,0);              // 70 at Royal Birkdale
+/* relative-to-par for an in-progress round, so the line shows +1/E/-1 before the round posts */
+function liveRoundToPar(g,r){
+  const rd=(g.holes||[])[r-1];                          // per-hole data (exact) when we have it
+  if(rd&&rd.holes&&rd.holes.length&&rd.holes.every(h=>typeof h.par==='number'))
+    return rd.holes.reduce((s,h)=>s+(h.value-h.par),0);
+  if(g.toPar&&typeof g.toPar.value==='number'){         // else derive: total minus completed rounds
+    let done=0,ok=true;
+    (g.lines||[]).forEach(l=>{ if(l.period<r){ if(typeof l.value==='number') done+=l.value-ROUND_PAR; else ok=false; } });
+    if(ok) return g.toPar.value-done;
+  }
+  return null;
+}
 function rdVal(g,r){
+  if(g.state==='STATUS_IN_PROGRESS'&&g.round===r&&g.thru>0&&g.thru<18){
+    const rp=liveRoundToPar(g,r);                       // running to-par shown on the line while the round is underway
+    return rp===null ? '&mdash;' : (rp===0?'E':(rp>0?'+'+rp:''+rp));
+  }
   const l=(g.lines||[]).find(x=>x.period===r);
   if(!l||typeof l.value!=='number') return '&mdash;';
-  if(g.state==='STATUS_IN_PROGRESS'&&g.round===r&&g.thru>0&&g.thru<18) return '&mdash;'; // round underway, not posted
-  return l.value;
+  return l.value;                                        // posted round: strokes total
 }
 const tzTime=(ms,tz)=>new Date(ms).toLocaleTimeString('en-US',{timeZone:tz,hour:'numeric',minute:'2-digit'}).replace(' AM','a').replace(' PM','p');
 function boardThru(g){
@@ -701,7 +706,7 @@ function banner(b){
   el.textContent=b.m;
 }
 function showTab(id){
-  ['pool','board','cmp','pins'].forEach(t=>{
+  ['pool','board','cmp'].forEach(t=>{
     document.getElementById(t).classList.toggle('hide',t!==id);
     document.getElementById('t-'+t).setAttribute('aria-selected',String(t===id));
   });
